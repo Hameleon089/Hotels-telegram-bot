@@ -10,5 +10,12 @@ BOT_TOKEN = os.getenv('BOT_TOKEN')
 RAPID_API_KEY = os.getenv('RAPID_API_KEY')
 DEFAULT_COMMANDS = (
     ('start', "Запустить бота"),
-    ('help', "Вывести справку")
+    ('help', "Вывести справку"),
+    ('lowprice', 'Вывести самые дешевые отели в городе'),
+    ('highprice', 'Вывести самые дорогие отели в городе'),
+    ('bestdeal', 'Вывести отели, наиболее подходящие по цене и расположению от центра')
 )
+
+max_hotels_amount = 25
+max_photos_amount = 5
+USD = 65
