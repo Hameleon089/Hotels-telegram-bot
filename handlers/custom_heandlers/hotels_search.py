@@ -5,6 +5,7 @@ from loader import bot
 from states.search_info import SearchInfoState
 from telebot.types import Message, CallbackQuery, InlineKeyboardMarkup
 from telegram_bot_calendar import DetailedTelegramCalendar
+from loguru import logger
 
 from keyboards.calendar_ru import LSTEP
 from keyboards.inline.cities import city_markup
@@ -14,9 +15,12 @@ from utils.city_founding import city_founding
 from utils.hotel_founding import lowprice_founding, highprice_founding, bestdeal_founding
 from utils.hotel_detail import hotel_detail
 from utils.result_output import result_output
+from logs.loggers import func_logger
+from database.database import data_to_db
 
 
 @bot.message_handler(commands=['lowprice', 'highprice', 'bestdeal'])
+@func_logger
 def start_search(message: Message) -> None:
     """
     Message handler. Начало поиска отелей:
@@ -26,8 +30,10 @@ def start_search(message: Message) -> None:
     :param message: сообщение
     """
 
+    logger.info(f'Начало поиска (команда: {message.text})')
     user_id: int = message.from_user.id
     chat_id: int = message.chat.id
+    logger.info(f'user_id = {user_id}; chat_id = {chat_id}')
 
     bot.set_state(user_id, SearchInfoState.city, chat_id)
     bot.send_message(user_id, 'В каком городе будем искать?')
@@ -37,9 +43,11 @@ def start_search(message: Message) -> None:
         data['date_time'] = datetime.utcnow().strftime('%d.%m.%Y %H:%M:%S')
         data['user_id'] = user_id
         data['chat_id'] = chat_id
+        data['user_name'] = message.from_user.full_name
 
 
 @bot.message_handler(state=SearchInfoState.city)
+@func_logger
 def enter_city(message: Message) -> None:
     """
     Message handler.
@@ -61,13 +69,13 @@ def enter_city(message: Message) -> None:
         bot.set_state(user_id, SearchInfoState.get_city, chat_id)
     else:
         text: str = 'Похоже ничего не нашлось или произошла ошибка! ' \
-               'Попробуйте еще раз.' \
-               '\nВ каком городе будем искать?'
+                    'Попробуйте еще раз.' \
+                    '\nВ каком городе будем искать?'
         bot.send_message(user_id, text)
 
 
-@bot.callback_query_handler(func=lambda call: True,
-                            state=SearchInfoState.get_city)
+@bot.callback_query_handler(func=None, state=SearchInfoState.get_city)
+@func_logger
 def get_city(call: CallbackQuery) -> None:
     """
     CallbackQuery handler.
@@ -87,7 +95,9 @@ def get_city(call: CallbackQuery) -> None:
         data['city'] = data['cities'][city_id]
         del data['cities']
         city: str = data['city']
-    bot.edit_message_text(f'Место для поиска: {city}', chat_id, message_id)
+    text: str = f'Место для поиска: {city}'
+    bot.edit_message_text(text, chat_id, message_id)
+    logger.info(text)
 
     calendar, step = DetailedTelegramCalendar(calendar_id=1, locale='ru',
                                               min_date=date.today()
@@ -100,6 +110,7 @@ def get_city(call: CallbackQuery) -> None:
 
 @bot.callback_query_handler(func=DetailedTelegramCalendar.func(calendar_id=1),
                             state=SearchInfoState.date_in)
+@func_logger
 def get_date_in(call: CallbackQuery) -> None:
     """
     CallbackQuery handler.
@@ -121,9 +132,9 @@ def get_date_in(call: CallbackQuery) -> None:
         bot.edit_message_text(f"Укажите дату заезда: выберите {LSTEP[step]}",
                               chat_id, message_id, reply_markup=key)
     elif result:
-        bot.edit_message_text(f"Дата заезда: {result.strftime('%d.%m.%Y')}",
-                              chat_id, message_id)
-
+        text: str = f"Дата заезда: {result.strftime('%d.%m.%Y')}"
+        bot.edit_message_text(text, chat_id, message_id)
+        logger.info(text)
         with bot.retrieve_data(user_id, chat_id) as data:
             data['date_in'] = result.strftime('%d.%m.%Y')
             min_date: date = result + timedelta(days=1)
@@ -139,6 +150,7 @@ def get_date_in(call: CallbackQuery) -> None:
 
 @bot.callback_query_handler(func=DetailedTelegramCalendar.func(calendar_id=2),
                             state=SearchInfoState.date_out)
+@func_logger
 def get_date_out(call: CallbackQuery) -> None:
     """
     CallbackQuery handler.
@@ -163,8 +175,9 @@ def get_date_out(call: CallbackQuery) -> None:
         bot.edit_message_text(f"Укажите дату отъезда: выберите {LSTEP[step]}",
                               chat_id, message_id, reply_markup=key)
     elif result:
-        bot.edit_message_text(f"Дата отъезда: {result.strftime('%d.%m.%Y')}",
-                              chat_id, message_id)
+        text: str = f"Дата отъезда: {result.strftime('%d.%m.%Y')}"
+        bot.edit_message_text(text, chat_id, message_id)
+        logger.info(text)
 
         with bot.retrieve_data(user_id, chat_id) as data:
             data['date_out'] = result.strftime('%d.%m.%Y')
@@ -173,8 +186,8 @@ def get_date_out(call: CallbackQuery) -> None:
                          reply_markup=hotels_markup())
 
 
-@bot.callback_query_handler(func=lambda call: True,
-                            state=SearchInfoState.hotels_amount)
+@bot.callback_query_handler(func=None, state=SearchInfoState.hotels_amount)
+@func_logger
 def get_hotels_amount(call: CallbackQuery) -> None:
     """
     CallbackQuery handler.
@@ -188,8 +201,9 @@ def get_hotels_amount(call: CallbackQuery) -> None:
     chat_id: int = call.message.chat.id
     message_id: int = call.message.message_id
 
-    bot.edit_message_text(f'Количество отелей для вывода: {call.data}',
-                          chat_id, message_id)
+    text: str = f'Количество отелей для вывода: {call.data}'
+    bot.edit_message_text(text, chat_id, message_id)
+    logger.info(text)
     bot.set_state(user_id, SearchInfoState.photos, chat_id)
     text: str = 'Сколько фотографий выводить для каждого отеля?'
     bot.send_message(user_id, text, reply_markup=photos_markup())
@@ -197,8 +211,8 @@ def get_hotels_amount(call: CallbackQuery) -> None:
         data['hotels_amount'] = int(call.data)
 
 
-@bot.callback_query_handler(func=lambda call: True,
-                            state=SearchInfoState.photos)
+@bot.callback_query_handler(func=None, state=SearchInfoState.photos)
+@func_logger
 def photos(call: CallbackQuery) -> None:
     """
     CallbackQuery handler.
@@ -221,6 +235,7 @@ def photos(call: CallbackQuery) -> None:
         text: str = f'Для каждого отеля будет выведено фотографий: {call.data}'
 
     bot.edit_message_text(text, chat_id, message_id)
+    logger.info(text)
     with bot.retrieve_data(user_id, chat_id) as data:
         data['photos_amount'] = int(call.data)
         command: str = data['command']
@@ -236,7 +251,8 @@ def photos(call: CallbackQuery) -> None:
     elif command == '/highprice':
         bot.send_message(user_id, waiting_text)
         hotels: Optional[List[dict]] = highprice_founding(cur_data)
-        hotels: Optional[List[dict]] = hotel_detail(hotels, cur_data['photos_amount'])
+        hotels: Optional[List[dict]] = hotel_detail(hotels,
+                                                    cur_data['photos_amount'])
 
     if command == '/bestdeal':
         bot.set_state(user_id, SearchInfoState.min_price, chat_id)
@@ -247,13 +263,18 @@ def photos(call: CallbackQuery) -> None:
         date_out = datetime.strptime(cur_data['date_out'], '%d.%m.%Y')
         days = (date_out - date_in).days
         result_output(hotels, cur_data['user_id'], days)
+        cur_data['hotels'] = hotels
+        data_to_db(cur_data)
+        logger.info('Поиск успешно завершен')
     else:
         text = 'Похоже ничего не нашлось или произошла ошибка! ' \
                'Попробуйте позже или установите другие параметры для поиска'
+        logger.warning('Поиск закончился с ошибкой')
         bot.send_message(user_id, text)
 
 
 @bot.message_handler(state=SearchInfoState.min_price)
+@func_logger
 def get_min_price(message: Message) -> None:
     """
     Message handler.
@@ -271,6 +292,7 @@ def get_min_price(message: Message) -> None:
                     '\nУкажите минимальную цену за сутки (в руб.)'
         bot.send_message(user_id, text)
     else:
+        logger.info(f'Минимальная цена за сутки: {message.text}')
         bot.set_state(user_id, SearchInfoState.max_price, chat_id)
         bot.send_message(user_id,
                          'Укажите максимальную цену за сутки (в руб.)')
@@ -279,6 +301,7 @@ def get_min_price(message: Message) -> None:
 
 
 @bot.message_handler(state=SearchInfoState.max_price)
+@func_logger
 def get_max_price(message: Message) -> None:
     """
     Message handler.
@@ -303,6 +326,7 @@ def get_max_price(message: Message) -> None:
                     '\nУкажите максимальную цену за сутки (в руб.)'
         bot.send_message(user_id, text)
     else:
+        logger.info(f'Максимальная цена за сутки: {message.text}')
         with bot.retrieve_data(user_id, chat_id) as data:
             data['max_price'] = int(message.text)
             cur_data: dict = data
@@ -316,7 +340,11 @@ def get_max_price(message: Message) -> None:
             date_out = datetime.strptime(cur_data['date_out'], '%d.%m.%Y')
             days = (date_out - date_in).days
             result_output(hotels, cur_data['user_id'], days)
+            cur_data['hotels'] = hotels
+            data_to_db(cur_data)
+            logger.info('Поиск успешно завершен')
         else:
             text = 'Похоже ничего не нашлось или произошла ошибка! ' \
                    'Попробуйте позже или установите другие параметры для поиска'
             bot.send_message(user_id, text)
+            logger.warning('Поиск закончился с ошибкой')

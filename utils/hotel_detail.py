@@ -4,8 +4,10 @@ import json
 from .request_to_api import request_to_api
 from .value_from_multidict import value_from_mutidict
 from config_data.config import RAPID_API_KEY
+from logs.loggers import func_logger
 
 
+@func_logger
 def hotel_detail(hotels: List[dict], photos_amount: int) \
         -> Optional[List[dict]]:
     """

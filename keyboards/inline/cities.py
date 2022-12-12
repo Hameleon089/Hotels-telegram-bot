@@ -1,8 +1,9 @@
 from typing import Dict
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from logs.loggers import func_logger
 
-
+@func_logger
 def city_markup(cities: Dict[str, str]) -> InlineKeyboardMarkup:
     """
     Создает клавиатуру с городами

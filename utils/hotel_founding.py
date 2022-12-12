@@ -4,8 +4,10 @@ import json
 from .request_to_api import request_to_api
 from .value_from_multidict import value_from_mutidict
 from config_data.config import RAPID_API_KEY, USD
+from logs.loggers import func_logger
 
 
+@func_logger
 def hotel_founding(city_id: str,
                    date_in: str,
                    date_out: str,
@@ -101,6 +103,7 @@ def hotel_founding(city_id: str,
         return hotels
 
 
+@func_logger
 def lowprice_founding(data: dict) -> Optional[List[dict]]:
     """
     Производит поиск самых дешевых отелей
@@ -116,6 +119,7 @@ def lowprice_founding(data: dict) -> Optional[List[dict]]:
     )
 
 
+@func_logger
 def highprice_founding(data: dict) -> Optional[List[dict]]:
     """
     Производит поиск самых дорогих отелей
@@ -133,6 +137,7 @@ def highprice_founding(data: dict) -> Optional[List[dict]]:
     return sorted(hotels, key=lambda elem: elem['price'], reverse=True)
 
 
+@func_logger
 def bestdeal_founding(data: dict) -> Optional[List[dict]]:
     """
     Производит поиск отелей наиболее подходящих по цене и расположению от

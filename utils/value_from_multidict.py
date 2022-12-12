@@ -1,6 +1,9 @@
 from typing import Any
 
+from logs.loggers import func_logger
 
+
+@func_logger
 def value_from_mutidict(multidict: dict, keys: list) -> Any:
     """
     Применяет метод get ко вложенным словарям по ключам
