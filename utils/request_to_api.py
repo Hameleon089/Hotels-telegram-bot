@@ -1,7 +1,12 @@
 from typing import Optional, Dict
 import requests
 
+from loguru import logger
 
+from logs.loggers import func_logger
+
+
+@func_logger
 def request_to_api(method: str, url: str, headers: Dict[str, str],
                    **kwargs) -> Optional[str]:
     """
@@ -20,5 +25,5 @@ def request_to_api(method: str, url: str, headers: Dict[str, str],
             return response.text
     except (requests.exceptions.Timeout, requests.exceptions.TooManyRedirects,
             requests.exceptions.RequestException) as exc:
-        print(exc)
+        logger.error(str(exc))
         return None

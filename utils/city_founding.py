@@ -4,8 +4,10 @@ import json
 
 from .request_to_api import request_to_api
 from config_data.config import RAPID_API_KEY
+from logs.loggers import func_logger
 
 
+@func_logger
 def city_founding(city: str) -> Optional[Dict[str, str]]:
     """
     Производит поиск городов по названию
